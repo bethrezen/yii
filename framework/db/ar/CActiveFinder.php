@@ -410,9 +410,16 @@ class CJoinElement
 	{
 		if($this->_parent===null) // root element
 		{
+		//start
+		        $joins = $criteria->join; 
+			$criteria->join = "";
+		//end	
 			$query=new CJoinQuery($this,$criteria);
 			$this->_finder->baseLimited=($criteria->offset>=0 || $criteria->limit>=0);
 			$this->buildQuery($query);
+		//start
+			$query->joins[]=$joins;
+		//end
 			$this->_finder->baseLimited=false;
 			$this->runQuery($query);
 		}
