@@ -40,7 +40,7 @@ class YiiBase
 	private static $_logger;
 	public static function getVersion()
 	{
-		return '1.1.13';
+		return '1.1.14-dev';
 	}
 	public static function createWebApplication($config=null)
 	{
@@ -458,6 +458,7 @@ class YiiBase
 		'CFileHelper' => '/utils/CFileHelper.php',
 		'CFormatter' => '/utils/CFormatter.php',
 		'CMarkdownParser' => '/utils/CMarkdownParser.php',
+		'CPasswordHelper' => '/utils/CPasswordHelper.php',
 		'CPropertyValue' => '/utils/CPropertyValue.php',
 		'CTimestamp' => '/utils/CTimestamp.php',
 		'CVarDumper' => '/utils/CVarDumper.php',
@@ -5722,8 +5723,9 @@ class CWidget extends CBaseController
 	public function getViewPath($checkTheme=false)
 	{
 		$className=get_class($this);
-		if(isset(self::$_viewPaths[$className]))
-			return self::$_viewPaths[$className];
+		$scope=$checkTheme?'theme':'local';
+		if(isset(self::$_viewPaths[$className][$scope]))
+			return self::$_viewPaths[$className][$scope];
 		else
 		{
 			if($checkTheme && ($theme=Yii::app()->getTheme())!==null)
@@ -5734,10 +5736,10 @@ class CWidget extends CBaseController
 				else
 					$path.=$className;
 				if(is_dir($path))
-					return self::$_viewPaths[$className]=$path;
+					return self::$_viewPaths[$className]['theme']=$path;
 			}
 			$class=new ReflectionClass($className);
-			return self::$_viewPaths[$className]=dirname($class->getFileName()).DIRECTORY_SEPARATOR.'views';
+			return self::$_viewPaths[$className]['local']=dirname($class->getFileName()).DIRECTORY_SEPARATOR.'views';
 		}
 	}
 	public function getViewFile($viewName)
@@ -8099,8 +8101,13 @@ class CDbConnection extends CApplicationComponent
 			elseif($driver==='sqlsrv')
 				$pdoClass='CMssqlSqlsrvPdoAdapter';
 		}
-		return new $pdoClass($this->connectionString,$this->username,
-									$this->password,$this->_attributes);
+		if(!class_exists($pdoClass))
+			throw new CDbException(Yii::t('yii','CDbConnection is unable to find PDO class "{className}". Make sure PDO is installed correctly.',
+				array('{className}'=>$pdoClass)));
+		@$instance=new $pdoClass($this->connectionString,$this->username,$this->password,$this->_attributes);
+		if(!$instance)
+			throw new CDbException(Yii::t('yii','CDbConnection failed to open the DB connection.'));
+		return $instance;
 	}
 	protected function initConnection($pdo)
 	{
